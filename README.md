@@ -4,46 +4,78 @@
 
 Create principles focused on code quality, user experience consistency, security and performance requirements. Using nextjs app router and typescript.
 
-## AWS Copilot CLI Sample App
+## Commands
 
-This is a sample AWS Copilot sample app. You can use AWS Copilot to deploy this simple website to Amazon ECS.
+```sh
+docker build -t webrtc-based-video-call .
 
-## Deploying
+docker run -p 4000:4000 --env-file ./backend/.env webrtc-based-video-call
 
-To deploy this app, clone this repo and then run:
+curl http://localhost:4000/api/health
 
-```
-copilot init --app webrtc-based-video-call \
-  --name api \
-  --type "Load Balanced Web Service" \
-  --dockerfile "./Dockerfile" \
-  --deploy
-```
+brew install aws/tap/copilot-cli
 
-Copilot will set up the following resources in your account:
+aws configure
 
-- A VPC
-- Subnets/Security Groups
-- Application Load Balancer
-- Amazon ECR Repositories
-- ECS Cluster & Service running on AWS Fargate
+copilot init
+# Application name: webrtc-app
+# Workload type: Load Balanced Web Service
+# Service name: app
+# Dockerfile: ./Dockerfile
+# Port: 4000
+# Deploy: Yes
 
-## Cleaning up
+aws acm list-certificates --region ap-southeast-1
 
-Since this demo sets up resources in your account, let's delete them so you don't get charged:
+aws acm request-certificate \
+  --domain-name aws.quochuy.dev \
+  --validation-method DNS \
+  --region ap-southeast-1
 
-```
+copilot env init --name dev --import-cert-arns arn:aws:acm:ap-southeast-1:617706767408:certificate/f7009aac-1d90-4c82-8a98-fe20d02a0d16
+
+copilot env upgrade --name dev
+
+copilot svc show --name app
+
+# aws.quochuy.dev CNAME
+copilot svc deploy --name app --env dev
+
+sudo dscacheutil -flushcache
+
+sudo killall -HUP mDNSResponder
+
+curl -vk https://aws.quochuy.dev/api/health
+
+# DELETE
+copilot svc delete --name app --env dev
+
+copilot env delete --name dev
+
 copilot app delete
+
 ```
 
-## Learning More
+```yaml
+# overlay
+http:
+  path: "/"
+  alias: aws.quochuy.dev
 
-If you want to learn more about AWS Copilot, check out our [documentation](https://aws.github.io/copilot-cli/).
+environments:
+  dev:
+    image:
+      build:
+        args:
+          VITE_API_BASE: "https://aws.quochuy.dev"
+          VITE_WS_BASE: "wss://aws.quochuy.dev"
+    variables:
+      NODE_ENV: production
+      BASE_URL: "https://aws.quochuy.dev"
+      APP_URL: "https://aws.quochuy.dev"
 
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
+# environment
+http:
+  public:
+    certificates: [arn:aws:acm:ap-southeast-1:123456789012:certificate/12345678-1234-1234-1234-123456789012]
+```

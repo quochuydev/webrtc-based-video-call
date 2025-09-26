@@ -4,6 +4,13 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ .
+
+# Accept Vite build-time environment variables
+ARG VITE_API_BASE
+ARG VITE_WS_BASE
+ENV VITE_API_BASE=${VITE_API_BASE}
+ENV VITE_WS_BASE=${VITE_WS_BASE}
+
 RUN npm run build
 
 # --- Build stage for backend ---
@@ -28,6 +35,6 @@ ENV NODE_ENV=production
 ENV PORT=4000
 
 EXPOSE 4000
-# CMD ["node", "build/index.js"]
+
 CMD npm install tsx --dev && npm start
 
