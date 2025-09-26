@@ -6,7 +6,6 @@ import express from "express";
 import http from "http";
 import morgan from "morgan";
 import path from "path";
-import fs from "fs";
 import { Server as IOServer } from "socket.io";
 import roomsRouter from "./api/rooms";
 import { env } from "./config/env";
@@ -17,6 +16,8 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(roomsRouter);
+
+console.log(`debug:env`, env);
 
 const server = http.createServer(app);
 const io = new IOServer(server, { cors: { origin: "*" } });
@@ -38,9 +39,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 if (process.env.NODE_ENV === "production") {
   const distPath = path.join(process.cwd(), "/frontend/dist");
-
   console.log(`debug:distPath`, distPath);
-  console.log(`debug:NODE_ENV`, process.env.NODE_ENV);
 
   app.use(express.static(distPath));
 
@@ -50,5 +49,5 @@ if (process.env.NODE_ENV === "production") {
 }
 
 server.listen(env.PORT, () => {
-  console.log(`backend listening on ${env.PORT}`);
+  console.log(`http://localhost:${env.PORT}`);
 });
