@@ -1,4 +1,9 @@
-import type { IceCandidate } from "@/types/room.ts";
+export type IceCandidate = {
+  candidate: string;
+  sdpMLineIndex: number | null;
+  sdpMid: string | null;
+  usernameFragment: string | null;
+};
 
 const servers = {
   iceServers: [

@@ -41,13 +41,6 @@ export type Candidate = {
   dataType: TypeStatus;
 };
 
-export type IceCandidate = {
-  candidate: string;
-  sdpMLineIndex: number | null;
-  sdpMid: string | null;
-  usernameFragment: string | null;
-};
-
 export type PCDescription = {
   sdp: string | undefined;
   type: RTCSdpType;
