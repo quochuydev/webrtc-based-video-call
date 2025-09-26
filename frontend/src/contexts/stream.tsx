@@ -8,6 +8,7 @@ const initialValues: {
   remoteStream?: MediaStream;
   remoteStreams: MediaStream[];
   setStream: Function;
+  closeStream: Function;
   pauseVideo: Function;
   resumeVideo: Function;
   pauseAudio: Function;
@@ -18,6 +19,7 @@ const initialValues: {
   remoteStream: undefined,
   remoteStreams: [],
   setStream: () => {},
+  closeStream: () => {},
   pauseVideo: () => {},
   resumeVideo: () => {},
   pauseAudio: () => {},
@@ -47,10 +49,14 @@ const StreamProvider: React.FC<Props> = ({ children }) => {
     setLocalStream(localStreamData);
 
     const remoteVideo = document.getElementById(
-      "remoteStream",
+      "remoteStream"
     ) as HTMLVideoElement;
 
     await setupStream({ localStreamData, remoteVideo });
+  };
+
+  const closeStream = async () => {
+    setLocalStream(undefined);
   };
 
   function pauseVideo() {
@@ -90,6 +96,7 @@ const StreamProvider: React.FC<Props> = ({ children }) => {
         remoteStream,
         remoteStreams,
         setStream,
+        closeStream,
         pauseVideo,
         resumeVideo,
         pauseAudio,

@@ -23,31 +23,33 @@ import CallerUserSVG from "@/assets/icons/callerUserSVG";
 import { useStream } from "@/contexts/stream";
 import type { PCDescription } from "@/types/room";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const WS_BASE = import.meta.env.VITE_WS_BASE || "ws://localhost:4000";
 
 export default function RoomCall() {
   const { id } = useParams<{ id: string }>();
-
+  const navigate = useNavigate();
   const socket = io(WS_BASE);
 
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const [offer, setOffer] = useState<any | null>(null);
-  const [remoteVideo, setRemoteVideo] = useState<HTMLVideoElement>();
-  const [localVideo, setLocalVideo] = useState<HTMLVideoElement>();
-
   const roomLabel = useMemo(() => id ?? "unknown", [id]);
+
+  const userId = uuidv4();
 
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
+  // const [isConnected, setIsConnected] = useState(false);
+  // const [transport, setTransport] = useState("N/A");
 
   const {
     localStream,
     setStream,
+    closeStream,
     remoteStream,
     remoteStreams,
     pauseAudio,
@@ -58,15 +60,26 @@ export default function RoomCall() {
   } = useStream();
 
   async function endCallFunction() {
+    // setLoading(true);
+    // navigate("/rooms");
+
     await stopMediaStream();
 
-    await fetch(`${API_BASE}/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ type: "close", data: {} }),
-    });
+    if (localStream) {
+      await fetch(`${API_BASE}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "close",
+          data: {
+            userId,
+          },
+        }),
+      });
+      closeStream();
+    }
 
     await closePeerConnection();
   }
@@ -85,9 +98,6 @@ export default function RoomCall() {
     };
   }, []);
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [transport, setTransport] = useState("N/A");
-
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
     const t = qs.get("token");
@@ -102,13 +112,15 @@ export default function RoomCall() {
       console.log(`debug:reconnected`);
     });
 
-    socket.on("offer", async (offer) => {
-      if (!t) {
-        console.log(`debug:ANSWER_OFFER`);
+    socket
+      .on("offer", async (data: { userId: string; offer: any }) => {
+        if (data.userId == userId) return;
+
+        console.log(`debug:on:OFFER`);
 
         const answer = await setupTheAnswer({
-          sdp: offer.sdp,
-          type: offer.type as RTCSdpType,
+          sdp: data.offer.sdp,
+          type: data.offer.type as RTCSdpType,
         });
 
         await fetch(`${API_BASE}/send`, {
@@ -116,74 +128,84 @@ export default function RoomCall() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ type: "description", data: answer }),
+          body: JSON.stringify({
+            type: "answer",
+            data: {
+              userId,
+              answer,
+            },
+          }),
         });
-      }
-    });
+      })
+      .on("answer", async (data: { userId: string; answer: any }) => {
+        if (data.userId === userId) return;
 
-    socket.on("candidate", async (data) => {
-      addIce({ ...data });
-    });
+        console.log(`debug:on:ANSWER`, !!data.answer);
+        peerSetRemoteDescription(data.answer);
+      })
+      .on("close", async (data: { userId: string }) => {
+        if (data.userId === userId) return;
+        // console.log(`debug:on:close`, data.userId, userId);
+        await endCallFunction();
+      })
+      .on("candidate", async (data) => {
+        console.log(`debug:on:CANDIDATE`, !!data.answer);
+        addIce(data.candidate);
+      });
 
-    socket.on("description", async (data) => {
-      if (t) {
-        console.log(`debug:ANSWERED`, data);
-
-        peerSetRemoteDescription(data);
-      }
-    });
-
-    socket.on("close", async () => {
-      endCallFunction();
-    });
-  }, []);
-
-  useEffect(() => {
     setupChannel();
-  }, [token]);
+  }, []);
 
   const setupChannel = async () => {
     setLoading(true);
 
+    const pc = getPeerConnection();
+
     await setStream();
     await setupDataChannel("room-1");
 
-    const pc = getPeerConnection();
+    // await peerConnectionIcecandidate({
+    //   roomId: "room-1",
+    //   roomMemberId: "roomMemberId",
+    //   onHandleCandidate: async (candidate) => {
+    //     console.log(`HANDLE_CANDIDATE`);
 
-    await peerConnectionIcecandidate({
-      roomId: "room-1",
-      roomMemberId: "roomMemberId",
-      onHandleCandidate: async (candidate) => {
-        await fetch(`${API_BASE}/send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ type: "candidate", data: candidate }),
-        });
+    //     await fetch(`${API_BASE}/send`, {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //       },
+    //       body: JSON.stringify({
+    //         type: "candidate",
+    //         data: {
+    //           candidate,
+    //         },
+    //       }),
+    //     });
+    //   },
+    // });
+
+    // OWNER
+    const offerDescription = await setupTheOffer();
+
+    const offer: PCDescription = {
+      sdp: offerDescription.sdp,
+      type: offerDescription.type,
+    };
+
+    await fetch(`${API_BASE}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    });
-
-    if (token) {
-      console.log(`debug:START_SEND_OFFER`);
-      // OWNER
-      const offerDescription = await setupTheOffer();
-
-      const offer: PCDescription = {
-        sdp: offerDescription.sdp,
-        type: offerDescription.type,
-      };
-
-      console.log(`debug:offer`, !!offer);
-
-      await fetch(`${API_BASE}/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      body: JSON.stringify({
+        type: "offer",
+        data: {
+          userId,
+          offer,
         },
-        body: JSON.stringify({ type: "offer", data: offer }),
-      });
-    }
+      }),
+    });
 
     pc.addEventListener("negotiationneeded", async (event) => {
       const creator = getCallStarterStatus();
@@ -193,17 +215,17 @@ export default function RoomCall() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (remoteStream) {
-      const remoteVideoData = document.getElementById(
-        "remoteStream"
-      ) as HTMLVideoElement;
+  // useEffect(() => {
+  //   if (remoteStream) {
+  //     const remoteVideoData = document.getElementById(
+  //       "remoteStream"
+  //     ) as HTMLVideoElement;
 
-      if (remoteVideoData && remoteVideoData instanceof HTMLVideoElement) {
-        remoteVideoData.srcObject = remoteStream;
-      }
-    }
-  }, [remoteStream]);
+  //     if (remoteVideoData && remoteVideoData instanceof HTMLVideoElement) {
+  //       remoteVideoData.srcObject = remoteStream;
+  //     }
+  //   }
+  // }, [remoteStream]);
 
   useEffect(() => {
     if (localStream) {
@@ -233,6 +255,7 @@ export default function RoomCall() {
 
       <div className="max-w-[1280px] relative w-full h-full flex flex-col justify-start items-top px-[3%] pt-0 space-y-4">
         <h1>Room {roomLabel}</h1>
+        <h1>UserId {userId}</h1>
         {!error && !token && <p>Loading…</p>}
         {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
 

@@ -1,7 +1,5 @@
 import type { IceCandidate } from "@/types/room.ts";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
-
 const servers = {
   iceServers: [
     {
@@ -105,7 +103,7 @@ export const peerConnectionIcecandidate = async (params: {
   }) => Promise<void>;
 }) => {
   const { onHandleCandidate } = params;
-  console.log(`debug:pc`, !!pc);
+  // console.log(`debug:pc`, !!pc);
 
   if (!pc) await setupPeerConnection();
 
@@ -135,7 +133,7 @@ export const peerConnectionIcecandidate = async (params: {
 
   pc!.ondatachannel = (event) => {
     const dataChannel = event.channel;
-    console.log(`debug:dataChannel`, dataChannel);
+    // console.log(`debug:dataChannel`, dataChannel);
   };
 };
 
@@ -157,7 +155,7 @@ export const setupStream = async ({
   remoteVideo.srcObject = remoteStream;
 
   pc!.ontrack = (ev: any) => {
-    console.log(`debug:ev.streams`, !!ev.streams?.[0]);
+    // console.log(`debug:ev.streams`, !!ev.streams?.[0]);
 
     if (ev.streams && ev.streams[0]) {
       remoteVideo.srcObject = ev.streams[0];
@@ -179,11 +177,11 @@ export const setupDataChannel = async (roomId: string) => {
   dataChannel = pc!.createDataChannel(roomId);
 
   dataChannel.onopen = (event) => {
-    console.log("open", event);
+    // console.log("open", event);
   };
 
   dataChannel.onclose = (event) => {
-    console.log("onclose", event);
+    // console.log("onclose", event);
   };
 
   dataChannel.onmessage = (event) => {
@@ -191,7 +189,7 @@ export const setupDataChannel = async (roomId: string) => {
   };
 
   dataChannel.onerror = (event) => {
-    console.log("on error", event);
+    // console.log("on error", event);
   };
 
   return dataChannel;
