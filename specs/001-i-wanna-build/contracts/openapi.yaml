@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: Video Call Rooms API
+  version: 0.1.0
+paths:
+  /rooms:
+    post:
+      summary: Create a new room
+      responses:
+        '201':
+          description: Room created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomId:
+                    type: string
+                  joinUrl:
+                    type: string
+        '500':
+          description: Server error
+  /rooms/{id}:
+    get:
+      summary: Validate join token and fetch room info
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomId:
+                    type: string
+                  valid:
+                    type: boolean
+        '401':
+          description: Invalid or expired token
+        '404':
+          description: Room not found
