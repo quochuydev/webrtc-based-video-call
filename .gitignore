@@ -6,6 +6,4 @@ sensitive.md
 ignore/
 .dist
 dist
-.env
-.env.*
 .DS_Store
