@@ -1,14 +1,15 @@
 import "dotenv/config";
 
-import http from "http";
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import { Server as IOServer } from "socket.io";
-import { env } from "./config/env";
-import roomsRouter from "./api/rooms";
 import bodyParser from "body-parser";
+import cors from "cors";
+import express from "express";
+import http from "http";
+import morgan from "morgan";
 import path from "path";
+import fs from "fs";
+import { Server as IOServer } from "socket.io";
+import roomsRouter from "./api/rooms";
+import { env } from "./config/env";
 
 const app = express();
 app.use(bodyParser.json());
@@ -26,10 +27,6 @@ io.on("connection", (socket) => {
   });
 });
 
-const distPath = path.join(__dirname, "../../frontend/dist");
-console.log(`debug:distPath`, distPath);
-console.log(`debug:NODE_ENV`, process.env.NODE_ENV);
-
 app.post("/api/send", (req, res) => {
   const data = req.body;
   console.log(`debug:data.data`, data.type, !!data.data);
@@ -40,6 +37,11 @@ app.post("/api/send", (req, res) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 if (process.env.NODE_ENV === "production") {
+  const distPath = path.join(process.cwd(), "/frontend/dist");
+
+  console.log(`debug:distPath`, distPath);
+  console.log(`debug:NODE_ENV`, process.env.NODE_ENV);
+
   app.use(express.static(distPath));
 
   app.use("*all", (_req, res) => {
