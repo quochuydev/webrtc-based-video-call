@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 ("use client");
-import React from "react";
-// import { useRoom } from '@/context/room';
-// import { useUser } from '@/context/user';
-// import { useOffer } from '@/context/offer';
-// import { useAnswer } from '@/context/answer';
-// import { useStream } from '@/context/stream';
 import {
   addIce,
   closePeerConnection,
@@ -31,20 +25,22 @@ import type { PCDescription } from "@/types/room";
 import { io } from "socket.io-client";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const WS_BASE = import.meta.env.VITE_WS_BASE || "ws://localhost:4000";
 
 export default function RoomCall() {
   const { id } = useParams<{ id: string }>();
-  const [token, setToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const socket = io("ws://localhost:4000");
-  const [offer, setOffer] = useState<any | null>(null);
 
+  const socket = io(WS_BASE);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const [offer, setOffer] = useState<any | null>(null);
   const [remoteVideo, setRemoteVideo] = useState<HTMLVideoElement>();
   const [localVideo, setLocalVideo] = useState<HTMLVideoElement>();
 
   const roomLabel = useMemo(() => id ?? "unknown", [id]);
 
+  const [token, setToken] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
@@ -61,9 +57,33 @@ export default function RoomCall() {
     stopMediaStream,
   } = useStream();
 
-  function endCallFunction() {
-    //TODO
+  async function endCallFunction() {
+    await stopMediaStream();
+
+    await fetch(`${API_BASE}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: "close", data: {} }),
+    });
+
+    await closePeerConnection();
   }
+
+  const handleBeforeUnload = (e: any) => {
+    endCallFunction();
+    e.returnValue = "Closing this window will end the call";
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   const [isConnected, setIsConnected] = useState(false);
   const [transport, setTransport] = useState("N/A");
@@ -112,6 +132,10 @@ export default function RoomCall() {
         peerSetRemoteDescription(data);
       }
     });
+
+    socket.on("close", async () => {
+      endCallFunction();
+    });
   }, []);
 
   useEffect(() => {
@@ -129,6 +153,15 @@ export default function RoomCall() {
     await peerConnectionIcecandidate({
       roomId: "room-1",
       roomMemberId: "roomMemberId",
+      onHandleCandidate: async (candidate) => {
+        await fetch(`${API_BASE}/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ type: "candidate", data: candidate }),
+        });
+      },
     });
 
     if (token) {
@@ -153,7 +186,8 @@ export default function RoomCall() {
     }
 
     pc.addEventListener("negotiationneeded", async (event) => {
-      console.log(`debug:negotiationneeded`);
+      const creator = getCallStarterStatus();
+      console.log(`debug:negotiationneeded`, creator);
     });
 
     setLoading(false);
@@ -162,7 +196,7 @@ export default function RoomCall() {
   useEffect(() => {
     if (remoteStream) {
       const remoteVideoData = document.getElementById(
-        "remoteStream",
+        "remoteStream"
       ) as HTMLVideoElement;
 
       if (remoteVideoData && remoteVideoData instanceof HTMLVideoElement) {
@@ -174,7 +208,7 @@ export default function RoomCall() {
   useEffect(() => {
     if (localStream) {
       const localVideoData = document.getElementById(
-        "localStream",
+        "localStream"
       ) as HTMLVideoElement;
 
       if (localVideoData && localVideoData instanceof HTMLVideoElement) {

@@ -11,7 +11,6 @@ const servers = {
   iceCandidatePoolSize: 10,
 };
 
-let processing = false;
 let pc: RTCPeerConnection | null;
 let callStarter: boolean = false;
 
@@ -58,7 +57,7 @@ export const peerSetRemoteDescription = async (description: any) => {
 };
 
 export const setupTheAnswer = async (
-  offerDescription: any,
+  offerDescription: any
 ): Promise<RTCSessionDescriptionInit> => {
   if (!pc) await setupPeerConnection();
 
@@ -95,17 +94,18 @@ export const addIce = async (iceCandidate: IceCandidate) => {
   }
 };
 
-export const peerConnectionIcecandidate = async ({
-  roomId,
-  roomMemberId,
-}: {
+export const peerConnectionIcecandidate = async (params: {
   roomId: string;
   roomMemberId: string;
+  onHandleCandidate: (params: {
+    candidate: string;
+    sdpMid: string | null;
+    sdpMLineIndex: number | null;
+    usernameFragment: string | null;
+  }) => Promise<void>;
 }) => {
-  // console.log(`debug:pc`, !!pc, {
-  //   roomId,
-  //   roomMemberId,
-  // });
+  const { onHandleCandidate } = params;
+  console.log(`debug:pc`, !!pc);
 
   if (!pc) await setupPeerConnection();
 
@@ -117,14 +117,7 @@ export const peerConnectionIcecandidate = async ({
         sdpMLineIndex: event.candidate.sdpMLineIndex,
         usernameFragment: event.candidate.usernameFragment,
       };
-
-      const res = await fetch(`${API_BASE}/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type: "candidate", data: candidate }),
-      });
+      await onHandleCandidate(candidate);
     }
   };
 

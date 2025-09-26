@@ -11,6 +11,7 @@ export default function Rooms() {
     setLoading(true);
     setError(null);
     setJoinUrl(null);
+
     try {
       const res = await fetch(`${API_BASE}/rooms`, { method: "POST" });
       if (!res.ok) throw new Error(`Failed to create room: ${res.status}`);
