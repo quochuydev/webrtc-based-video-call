@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 ("use client");
 import {
@@ -23,15 +23,16 @@ import CallerUserSVG from "@/assets/icons/callerUserSVG";
 import { useStream } from "@/contexts/stream";
 import type { PCDescription } from "@/types/room";
 import { io } from "socket.io-client";
-import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const WS_BASE = import.meta.env.VITE_WS_BASE || "ws://localhost:4000";
 
+console.log(`debug:API_BASE`, API_BASE);
+console.log(`debug:WS_BASE`, WS_BASE);
+
 export default function RoomCall() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const socket = io(WS_BASE);
 
   const roomLabel = useMemo(() => id ?? "unknown", [id]);
@@ -50,7 +51,6 @@ export default function RoomCall() {
     localStream,
     setStream,
     closeStream,
-    remoteStream,
     remoteStreams,
     pauseAudio,
     pauseVideo,
@@ -66,7 +66,7 @@ export default function RoomCall() {
     await stopMediaStream();
 
     if (localStream) {
-      await fetch(`${API_BASE}/send`, {
+      await fetch(`${API_BASE}/api/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,6 +113,9 @@ export default function RoomCall() {
     });
 
     socket
+      .on("ping", async (data) => {
+        console.log(`pong`, data);
+      })
       .on("offer", async (data: { userId: string; offer: any }) => {
         if (data.userId == userId) return;
 
@@ -123,7 +126,7 @@ export default function RoomCall() {
           type: data.offer.type as RTCSdpType,
         });
 
-        await fetch(`${API_BASE}/send`, {
+        await fetch(`${API_BASE}/api/send`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -164,26 +167,26 @@ export default function RoomCall() {
     await setStream();
     await setupDataChannel("room-1");
 
-    // await peerConnectionIcecandidate({
-    //   roomId: "room-1",
-    //   roomMemberId: "roomMemberId",
-    //   onHandleCandidate: async (candidate) => {
-    //     console.log(`HANDLE_CANDIDATE`);
+    await peerConnectionIcecandidate({
+      roomId: "room-1",
+      roomMemberId: "roomMemberId",
+      onHandleCandidate: async (candidate) => {
+        console.log(`HANDLE_CANDIDATE`);
 
-    //     await fetch(`${API_BASE}/send`, {
-    //       method: "POST",
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //       },
-    //       body: JSON.stringify({
-    //         type: "candidate",
-    //         data: {
-    //           candidate,
-    //         },
-    //       }),
-    //     });
-    //   },
-    // });
+        await fetch(`${API_BASE}/api/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "candidate",
+            data: {
+              candidate,
+            },
+          }),
+        });
+      },
+    });
 
     // OWNER
     const offerDescription = await setupTheOffer();
@@ -193,7 +196,7 @@ export default function RoomCall() {
       type: offerDescription.type,
     };
 
-    await fetch(`${API_BASE}/send`, {
+    await fetch(`${API_BASE}/api/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -258,6 +261,25 @@ export default function RoomCall() {
         <h1>UserId {userId}</h1>
         {!error && !token && <p>Loading…</p>}
         {error && <p style={{ color: "crimson" }}>Error: {error}</p>}
+
+        <button
+          onClick={async () => {
+            await fetch(`${API_BASE}/api/send`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                type: "ping",
+                data: {
+                  message: "this is ping",
+                },
+              }),
+            });
+          }}
+        >
+          test socket
+        </button>
 
         <div className="max-h-[900px] h-[91%] w-full bg-green-200 rounded-md relative overflow-hidden mt-4">
           {/* remote participants */}

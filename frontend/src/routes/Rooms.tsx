@@ -13,7 +13,7 @@ export default function Rooms() {
     setJoinUrl(null);
 
     try {
-      const res = await fetch(`${API_BASE}/rooms`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/api/rooms`, { method: "POST" });
       if (!res.ok) throw new Error(`Failed to create room: ${res.status}`);
       const data = (await res.json()) as { roomId: string; joinUrl: string };
       setJoinUrl(data.joinUrl);

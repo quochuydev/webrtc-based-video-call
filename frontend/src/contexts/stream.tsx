@@ -1,6 +1,6 @@
 "use client";
 
-import { getPeerConnection, setupStream } from "../utils/peerConnection";
+import { setupStream } from "../utils/peerConnection";
 import React, { useContext, useState } from "react";
 
 const initialValues: {
@@ -39,7 +39,7 @@ const StreamProvider: React.FC<Props> = ({ children }) => {
   const [localStream, setLocalStream] = useState<MediaStream>();
 
   const remoteStream = new MediaStream();
-  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
+  const [remoteStreams] = useState<MediaStream[]>([]);
 
   const setStream = async () => {
     const localStreamData = await navigator.mediaDevices.getUserMedia({

@@ -5,14 +5,14 @@ import { env } from "../config/env";
 
 const router = Router();
 
-router.post("/rooms", (_req, res) => {
+router.post("/api/rooms", (_req, res) => {
   const roomId = uuidv4();
   const token = issueJoinToken(roomId);
   const joinUrl = `${env.APP_URL}/rooms/${roomId}?token=${token}`;
   res.status(201).json({ roomId, joinUrl });
 });
 
-router.get("/rooms/:id", (req, res) => {
+router.get("/api/rooms/:id", (req, res) => {
   const { id } = req.params;
   const token = req.query.token as string;
 

@@ -120,11 +120,11 @@ export const peerConnectionIcecandidate = async (params: {
   };
 
   pc!.onconnectionstatechange = (event) => {
-    // console.log("connectionstatechange", event.target);
+    console.log("connectionstatechange", event.target);
   };
 
   pc!.onsignalingstatechange = (event) => {
-    // console.log("onsignalingstatechange", event.target);
+    console.log("onsignalingstatechange", event.target);
   };
 
   pc!.addEventListener("iceconnectionstatechange", (event) => {
@@ -177,11 +177,11 @@ export const setupDataChannel = async (roomId: string) => {
   dataChannel = pc!.createDataChannel(roomId);
 
   dataChannel.onopen = (event) => {
-    // console.log("open", event);
+    console.log("open", event);
   };
 
   dataChannel.onclose = (event) => {
-    // console.log("onclose", event);
+    console.log("onclose", event);
   };
 
   dataChannel.onmessage = (event) => {
@@ -189,7 +189,7 @@ export const setupDataChannel = async (roomId: string) => {
   };
 
   dataChannel.onerror = (event) => {
-    // console.log("on error", event);
+    console.log("on error", event);
   };
 
   return dataChannel;
